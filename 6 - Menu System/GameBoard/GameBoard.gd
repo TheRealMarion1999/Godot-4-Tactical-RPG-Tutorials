@@ -25,11 +25,12 @@ var _prev_position
 @onready var _unit_path: UnitPath = $UnitPath
 @onready var _map: TileMapLayer = $Map
 @onready var _cursor: Cursor = $Cursor
+@onready var mapIDs: Array = $Map.get_tile_IDs()
 
 const MAX_VALUE: int = 99999
 
 func _ready() -> void:
-	_movement_costs = _map.get_movement_costs(grid)
+	#_movement_costs = _map.get_movement_costs(grid)
 	_reinitialize()
 
 
@@ -53,12 +54,12 @@ func is_occupied(cell: Vector2) -> bool:
 
 ## Returns an array of cells a given unit can walk using the flood fill algorithm.
 func get_walkable_cells(unit: Unit) -> Array:
-	return _dijkstra(unit.cell, unit.move_range, false)
+	return _dijkstra(unit.cell, unit.move_range, false, unit.costs)
 
 ## Return an array of cells a given unit can attack using dijkstra's and flood fill algorithm
 func get_attackable_cells(unit: Unit) -> Array:
 	var attackable_cells = []
-	var real_walkable_cells = _dijkstra(unit.cell, unit.move_range, true)
+	var real_walkable_cells = _dijkstra(unit.cell, unit.move_range, true, unit.costs)
 	
 	## iterate through every single cell and find their partners based on attack range
 	for curr_cell in real_walkable_cells:
@@ -119,7 +120,7 @@ func _flood_fill(cell: Vector2, max_distance: int) -> Array:
 	return full_array.filter(func(i): return i not in wall_array)
 
 ## Generates a list of walkable cells based on unit movement value and tile movement cost
-func _dijkstra(cell: Vector2, max_distance: int, attackable_check: bool) -> Array:
+func _dijkstra(cell: Vector2, max_distance: int, attackable_check: bool, costs) -> Array:
 	var curr_unit = _units[cell]
 	var movable_cells = [cell] # append our base cell to the array
 	var visited = [] # 2d array that keeps track of which cells we've already looked at while running the algorithm
@@ -136,6 +137,8 @@ func _dijkstra(cell: Vector2, max_distance: int, attackable_check: bool) -> Arra
 			visited[y].append(false)
 			distances[y].append(MAX_VALUE)
 			previous[y].append(null)
+			
+	_movement_costs = mapIDs.map(func(row): return row.map(func(TileID): return costs.get(TileID)))
 	
 	## Make new queue
 	var queue = PriorityQueue.new()

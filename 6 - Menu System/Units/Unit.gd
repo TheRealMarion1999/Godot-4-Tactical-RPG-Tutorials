@@ -5,6 +5,18 @@
 class_name Unit
 extends Path2D
 
+
+enum TILE_NAMES {
+	GRASS,
+	ROAD,
+	FLOWERS,
+	SINGLE_BUSH,
+	DOUBLE_BUSH
+}
+
+
+##The minimum amount needed to avoid zero interval errors with walk_along(). Don't even worry about it.
+const REALLY_SMALL_NUMBER = 0.0000001
 ## Emitted when the unit reached the end of a path along which it was walking.
 signal walk_finished
 
@@ -36,6 +48,15 @@ signal walk_finished
 		if not _sprite:
 			await ready
 		_sprite.position = value
+
+##per-unit movement costs.
+##TODO: write better documentation
+@export var costs: Dictionary[TILE_NAMES, int] = {TILE_NAMES.GRASS:1,
+TILE_NAMES.ROAD:1,
+TILE_NAMES.FLOWERS:1,
+TILE_NAMES.SINGLE_BUSH:2,
+TILE_NAMES.DOUBLE_BUSH:255
+}
 
 ## Coordinates of the current cell the cursor moved to.
 var cell := Vector2.ZERO:
@@ -95,6 +116,12 @@ func walk_along(path: PackedVector2Array) -> void:
 	
 	curve.add_point(Vector2.ZERO)
 	for point in path:
-		curve.add_point(grid.calculate_map_position(point) - position)
+		var newPoint = grid.calculate_map_position(point) - position
+		#Jank solution to a problem caused by changes to Curve2d in Godot 4.6.
+		#Curves now check for a minimum length of 0, which causes errors. harmless, I think but still annoying.
+		if curve.get_baked_points().size() == 0 || curve.get_closest_point(newPoint) != Vector2(0, 0):
+			curve.add_point(newPoint)
+		else: 
+			curve.add_point(newPoint + Vector2(REALLY_SMALL_NUMBER, REALLY_SMALL_NUMBER))
 	cell = path[-1]
 	_is_walking = true
